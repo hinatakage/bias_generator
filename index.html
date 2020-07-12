@@ -1,0 +1,155 @@
+ <html xmlns="http://www.w3.org/1999/xhtml">
+
+ <head>
+     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+     <title>推しジェネレーター</title>
+     <link href="https://fonts.googleapis.com/css?family=Noto+Sans+JP&display=swap" rel="stylesheet" />
+ </head>
+
+ <body>
+     <!-- 入力エリア部分 -->
+     <dl class="table">
+         <dt>馴れ初め</dt>
+         <dd><textarea rows="10" cols="60" type="text" name="txt01" id="txt01">ここに記入してください</textarea></dd>
+         <dt>詳細</dt>
+         <dd><textarea rows="10" cols="60" type="text" name="txt02" id="txt02">ここに記入してください</textarea></dd>
+     </dl>
+     <div class="btn">
+         <button id="update">画像生成</button>
+     </div>
+
+
+     <!-- 出力部分 -->
+     <style>
+         #result {
+             letter-spacing: 3px;
+             font-family: Noto Sans JP;
+         }
+
+     </style>
+     <div class="module">
+         <h2>結果</h2>
+         <!-- width,heightは必須 -->
+         <canvas id="result" width="900" height="1600"></canvas>
+         <div class="btn">
+             <form action="img.php" method="post" id="saveform">
+                 <button id="save">画像として保存</button>
+             </form>
+         </div>
+     </div>
+     <script src="https://code.createjs.com/easeljs-0.7.1.min.js"></script>
+     <script src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
+     <script>
+         (function($) {
+             //初期化
+             var init = function() {
+                 //ベースとなる画像のプリロード
+                 baseImg = new Image();
+                 baseImg.src = 'card_notext.png';
+                 stage = new createjs.Stage('result');
+             }
+
+             //画像と文字を合成する処理
+             var genImage = function() {
+                 var img = new createjs.Bitmap(baseImg);
+
+                 stage.addChild(img);
+
+                 //合成する文字の位置情報などを定義
+                 //input[type="text"]のnameをキーとし、X座標、Y座標、フォントサイズ、行揃えを持たせている。
+                 //色などそれ以上の設定が必要な場合は配列で持たせておくと管理しやすい、と思う。
+                 var txt = {
+                     'txt01': {
+                         'x': 220,
+                         'y': 745,
+                         'size': '32px',
+                         'align': 'left',
+                         'color': '#c0b07a',
+                         'lineHeight': '48',
+                         'fontweight': 'bold'
+                     },
+                     'txt02': {
+                         'x': 220,
+                         'y': 914,
+                         'size': '24px',
+                         'align': 'left',
+                         'color': '#c0b07a',
+                         'lineHeight': '40',
+                         'fontweight': 'normal'
+                     }
+                 }
+
+                 //上記の配列より文字オブジェクトを生成し、stageにaddChildする
+                 $.each(txt, function(key, value) {
+                     //本文は入力された内容をそのまま取る
+                     var content = $('#' + key).val();
+
+                     //固定文言がある場合はkeyで判別して追加したりするといいと思う
+                     if (key == 'txt01' && content) {
+                         var content = content.replace(/[\r|\r\n|\n]/g, "").replace(/(.{13})/g, "$1" + "\n");
+                         if (content.length < 13) {
+                             this.y = 793;
+                         }
+                     }
+
+                     //必要があれば指定文字数ごとに"\n"をいれると改行されます。
+                     //10文字で改行をいれるなら以下のように。
+                     if (key == 'txt02') {
+                         var content = content.replace(/[\r|\r\n|\n]/g, "").replace(/(.{17})/g, "$1" + "\n");
+                     }
+
+                     //文字オブジェクト生成
+                     var obj = new createjs.Text(content);
+
+                     //文字の属性を設定する
+                     obj.textAlign = value.align;
+                     obj.font = value.fontweight + ' ' + value.size + '/1.5 "Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif'; //CSSのfontのショートハンドと同じ
+                     obj.x = value.x; //X座標
+                     obj.y = value.y; //Y座標
+                     obj.color = value.color;
+                     obj.lineHeight = value.lineHeight;
+
+                     stage.addChild(obj);
+                 });
+             }
+
+
+             //保存させる処理
+             //ここだけはブラウザ上で完結できなかった…。
+             //base64をデコードしてheaderを付加してechoするだけのPHPへPOSTしています
+             var save = function() {
+                 var png = stage.toDataURL('image/png'); //base64エンコードした画像データ生成
+                 if (png) {
+                     $('input[name="img"]').remove();
+                     $('#saveform').append('<input type="hidden" name="img" value="' + png + '" />');
+                     return true;
+                 } else {
+                     return false;
+                 }
+             }
+
+             $(function() {
+                 //canvasオブジェクトを事前に定義しておく
+                 $(window).on('load', function() {
+                     init();
+                 });
+
+                 //画像生成ボタンが押されたときにcanvas生成
+                 $('#update').on('click', function(e) {
+                     //改めてnewすることでキャッシュが残って変な感じにならない…多分。
+                     stage = new createjs.Stage('result');
+                     genImage();
+                     stage.update();
+                 });
+
+                 //「画像として保存」ボタンが押された時の処理
+                 $('#saveform').on('submit', function() {
+                     save();
+                 });
+             });
+         })(jQuery);
+
+     </script>
+ </body>
+
+ </html>
